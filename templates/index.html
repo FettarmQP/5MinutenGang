@@ -269,45 +269,49 @@
         
         // Lade eigene Audio-Datei (optional)
         function loadCustomSound(audioPath) {
-            try {
-                customAudio = new Audio(audioPath);
-                customAudio.volume = 0.7; // Lautstärke anpassen (0.0 - 1.0)
-                customAudio.preload = 'auto';
-                useCustomSound = true;
-                console.log('Eigener Sound geladen:', audioPath);
-                return true;
-            } catch (error) {
-                console.log('Fehler beim Laden des eigenen Sounds:', error);
-                useCustomSound = false;
-                return false;
-            }
+            return new Promise((resolve, reject) => {
+                try {
+                    const audio = new Audio(audioPath);
+                    audio.volume = 0.7; // Lautstärke anpassen (0.0 - 1.0)
+                    audio.preload = 'auto';
+                    
+                    // Event-Listener für erfolgreiches Laden
+                    audio.addEventListener('canplaythrough', () => {
+                        customAudio = audio;
+                        useCustomSound = true;
+                        console.log('Eigener Sound erfolgreich geladen:', audioPath);
+                        resolve(true);
+                    });
+                    
+                    // Event-Listener für Fehler
+                    audio.addEventListener('error', (e) => {
+                        console.log('Fehler beim Laden des eigenen Sounds:', e);
+                        useCustomSound = false;
+                        reject(false);
+                    });
+                    
+                    // Timeout nach 5 Sekunden
+                    setTimeout(() => {
+                        if (!useCustomSound) {
+                            console.log('Timeout beim Laden des eigenen Sounds');
+                            useCustomSound = false;
+                            reject(false);
+                        }
+                    }, 5000);
+                    
+                } catch (error) {
+                    console.log('Fehler beim Laden des eigenen Sounds:', error);
+                    useCustomSound = false;
+                    reject(false);
+                }
+            });
         }
         
         function createNotificationSound() {
-            // Erstelle einen einfachen Notification-Sound mit Web Audio API (Fallback)
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
+            // SOUND-SYSTEM KOMPLETT DEAKTIVIERT
             function playSound() {
-                // Erstelle Oszillator für den Sound
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                // Verbinde Oszillator mit Gain und Output
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                // Sound-Parameter
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Höherer Ton
-                oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
-                
-                // Lautstärke-Envelope
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                
-                // Sound abspielen
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.3);
+                // Kein Sound wird abgespielt
+                console.log('Default Sound deaktiviert');
             }
             
             return playSound;
@@ -316,39 +320,17 @@
         const playDefaultSound = createNotificationSound();
 
         function playNotificationSound() {
-            // Verhindere mehrfache Sounds kurz hintereinander (Cooldown von 3 Sekunden)
-            if (soundCooldown) {
-                console.log('Sound-Cooldown aktiv, überspringe Sound');
-                return;
-            }
-            
-            soundCooldown = true;
-            setTimeout(() => {
-                soundCooldown = false;
-            }, 3000); // 3 Sekunden Cooldown
-
-            if (useCustomSound && customAudio) {
-                try {
-                    // Eigenen Sound abspielen
-                    customAudio.currentTime = 0; // Von Anfang starten
-                    customAudio.play().catch(e => {
-                        console.log('Fehler beim Abspielen des eigenen Sounds:', e);
-                        // Fallback auf generierten Sound
-                        playDefaultSound();
-                    });
-                } catch (error) {
-                    console.log('Fehler beim Abspielen des eigenen Sounds:', error);
-                    // Fallback auf generierten Sound
-                    playDefaultSound();
-                }
-            } else {
-                // Standard generierter Sound
-                playDefaultSound();
-            }
+            // SOUNDS KOMPLETT DEAKTIVIERT
+            console.log('Sound-System deaktiviert - kein Sound wird abgespielt');
+            return;
         }
         
+        // SOUND-SYSTEM KOMPLETT DEAKTIVIERT
         // Eigenen Sound laden (Beispiele - eine Zeile auskommentieren)
-        loadCustomSound('/static/notification.mp3');  // MP3 Datei
+        // WICHTIG: Stelle sicher, dass die Datei wirklich existiert!
+        // loadCustomSound('/static/notification.mp3').catch(() => {
+        //     console.log('Custom Sound konnte nicht geladen werden, verwende Default Sound');
+        // });
         // loadCustomSound('/static/notification.wav');  // WAV Datei
         // loadCustomSound('/static/notification.ogg');  // OGG Datei
         // loadCustomSound('https://example.com/sound.mp3'); // URL zu Online-Sound
