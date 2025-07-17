@@ -1,0 +1,10 @@
+# Placeholder für eine echte Sounddatei
+# Diese Datei sollte durch eine echte .mp3/.wav/.ogg Datei ersetzt werden
+
+# Zum Testen kannst du:
+# 1. Eine eigene Sounddatei hier hineinlegen (notification.mp3, ding.wav, etc.)
+# 2. Einen der kostenlosen Sound-Services nutzen (siehe README_SOUNDS.md)
+# 3. Die Sound-Test-Seite nutzen: http://localhost:5000/sound_test
+
+# Beispiel-Aktivierung in index.html:
+# loadCustomSound('/static/notification.mp3');

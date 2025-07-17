@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Test - 5MinutenGang</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .sound-test {
+            background: rgba(145, 70, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid rgba(145, 70, 255, 0.3);
+        }
+        button {
+            background: #9146ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #772ce8; }
+        input[type="text"] {
+            width: 300px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #666;
+            background: #333;
+            color: white;
+        }
+        .current-sound {
+            background: rgba(0, 255, 0, 0.1);
+            border-color: rgba(0, 255, 0, 0.3);
+        }
+        .volume-control {
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔊 Sound Test für 5MinutenGang</h1>
+    
+    <div class="sound-test">
+        <h2>Standard Web Audio API Sound</h2>
+        <p>Der aktuell verwendete generierte Sound</p>
+        <button onclick="playGeneratedSound()">Standard Sound testen</button>
+    </div>
+
+    <div class="sound-test">
+        <h2>Eigene Sound-Datei laden</h2>
+        <p>Lade eine eigene MP3, WAV oder OGG Datei:</p>
+        <input type="text" id="soundPath" placeholder="/static/notification.mp3 oder URL" value="/static/">
+        <button onclick="loadAndTestCustomSound()">Sound laden & testen</button>
+        
+        <div class="volume-control">
+            <label>Lautstärke: </label>
+            <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="updateVolume()">
+            <span id="volumeDisplay">70%</span>
+        </div>
+    </div>
+
+    <div class="sound-test" id="currentSoundInfo" style="display: none;">
+        <h2>✅ Aktuell geladener Sound</h2>
+        <p id="currentSoundPath">-</p>
+        <button onclick="testCurrentSound()">Aktuellen Sound testen</button>
+        <button onclick="clearCustomSound()">Zurück zu Standard Sound</button>
+    </div>
+
+    <div class="status" id="status">
+        Bereit zum Testen...
+    </div>
+
+    <div class="sound-test">
+        <h2>📁 Sound-Datei hochladen</h2>
+        <p>Wähle eine lokale Datei zum Testen:</p>
+        <input type="file" id="fileInput" accept="audio/*" onchange="loadLocalFile()">
+    </div>
+
+    <div class="sound-test">
+        <h2>🌐 Empfohlene Online-Sounds zum Testen</h2>
+        <button onclick="loadAndTestCustomSound('https://www.soundjay.com/misc/sounds/bell-ringing-05.wav')">🔔 Glocke</button>
+        <button onclick="loadAndTestCustomSound('https://www.soundjay.com/misc/sounds/beep-7.wav')">📢 Beep</button>
+        <p><small>Hinweis: Online-Sounds funktionieren nur wenn die URLs verfügbar sind und CORS erlauben.</small></p>
+    </div>
+
+    <script>
+        let customAudio = null;
+        let audioContext = null;
+
+        function loadAndTestCustomSound(path = null) {
+            const soundPath = path || document.getElementById('soundPath').value;
+            
+            if (!soundPath.trim()) {
+                updateStatus('❌ Bitte gib einen Pfad zur Sound-Datei ein', 'error');
+                return;
+            }
+
+            updateStatus('🔄 Lade Sound: ' + soundPath, 'loading');
+
+            try {
+                customAudio = new Audio(soundPath);
+                customAudio.volume = document.getElementById('volumeSlider').value / 100;
+                
+                customAudio.addEventListener('canplay', function() {
+                    updateStatus('✅ Sound erfolgreich geladen: ' + soundPath, 'success');
+                    showCurrentSoundInfo(soundPath);
+                    testCurrentSound();
+                });
+
+                customAudio.addEventListener('error', function(e) {
+                    updateStatus('❌ Fehler beim Laden: ' + soundPath + ' - ' + e.message, 'error');
+                    customAudio = null;
+                    hideCurrentSoundInfo();
+                });
+
+                customAudio.load();
+                
+            } catch (error) {
+                updateStatus('❌ Fehler beim Laden: ' + error.message, 'error');
+                customAudio = null;
+            }
+        }
+
+        function testCurrentSound() {
+            if (!customAudio) {
+                updateStatus('❌ Kein eigener Sound geladen', 'error');
+                return;
+            }
+
+            try {
+                customAudio.currentTime = 0;
+                customAudio.play().then(() => {
+                    updateStatus('🔊 Eigener Sound abgespielt', 'success');
+                }).catch(error => {
+                    updateStatus('❌ Fehler beim Abspielen: ' + error.message, 'error');
+                });
+            } catch (error) {
+                updateStatus('❌ Fehler beim Abspielen: ' + error.message, 'error');
+            }
+        }
+
+        function clearCustomSound() {
+            customAudio = null;
+            hideCurrentSoundInfo();
+            updateStatus('🔄 Zurück zu Standard Sound', 'info');
+        }
+
+        function updateVolume() {
+            const volume = document.getElementById('volumeSlider').value;
+            document.getElementById('volumeDisplay').textContent = volume + '%';
+            
+            if (customAudio) {
+                customAudio.volume = volume / 100;
+            }
+        }
+
+        function loadLocalFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+            updateStatus('🔄 Lade lokale Datei: ' + file.name, 'loading');
+            
+            try {
+                customAudio = new Audio(url);
+                customAudio.volume = document.getElementById('volumeSlider').value / 100;
+                
+                customAudio.addEventListener('canplay', function() {
+                    updateStatus('✅ Lokale Datei erfolgreich geladen: ' + file.name, 'success');
+                    showCurrentSoundInfo('Lokale Datei: ' + file.name);
+                    testCurrentSound();
+                });
+
+                customAudio.addEventListener('error', function(e) {
+                    updateStatus('❌ Fehler beim Laden der lokalen Datei', 'error');
+                    customAudio = null;
+                    URL.revokeObjectURL(url);
+                });
+
+            } catch (error) {
+                updateStatus('❌ Fehler beim Laden der lokalen Datei: ' + error.message, 'error');
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function showCurrentSoundInfo(path) {
+            document.getElementById('currentSoundInfo').style.display = 'block';
+            document.getElementById('currentSoundInfo').classList.add('current-sound');
+            document.getElementById('currentSoundPath').textContent = path;
+        }
+
+        function hideCurrentSoundInfo() {
+            document.getElementById('currentSoundInfo').style.display = 'none';
+            document.getElementById('currentSoundInfo').classList.remove('current-sound');
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            
+            // Auto-clear nach 5 Sekunden
+            setTimeout(() => {
+                if (statusEl.textContent === message) {
+                    statusEl.textContent = 'Bereit zum Testen...';
+                    statusEl.className = 'status';
+                }
+            }, 5000);
+        }
+
+        // Initial volume display
+        updateVolume();
+    </script>
+</body>
+</html>

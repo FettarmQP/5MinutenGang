@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5MinutenGang - Willkommens Display</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(75, 0, 130, 0.8));
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 400px;
+            min-width: 300px;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.5s ease-in-out;
+        }
+
+        .user-container.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .profile-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            margin: 0 auto 15px;
+            display: block;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .username {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .welcome-text {
+            font-size: 18px;
+            opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .no-users {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(255, 140, 0, 0.8));
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+        }
+
+        .user-feed {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 14px;
+            font-weight: normal;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .feed-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            animation: slideInFeed 0.3s ease-out;
+            line-height: 1.3;
+        }
+
+        .feed-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .feed-username {
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        @keyframes slideInFeed {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Scrollbar Styling */
+        .user-feed::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .user-feed::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .user-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .controls button {
+            background: #9146ff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .controls button:hover {
+            background: #772ce8;
+        }
+
+        .status {
+            margin-top: 5px;
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .user-container.animate {
+            animation: fadeInUp 0.5s ease-out, pulse 2s ease-in-out infinite;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 480px) {
+            .user-container {
+                max-width: 90%;
+                margin: 0 20px;
+            }
+            
+            .profile-image {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .username {
+                font-size: 20px;
+            }
+            
+            .welcome-text {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="displayContainer">
+        <div class="no-users">
+            <div>5-Minuten-Gang läuft noch (<span id="timeRemainingStart">--:--</span>) ⏰</div>
+            <div style="font-size: 16px; margin-top: 10px; opacity: 0.8;">
+                Starte die Sammlung für <strong>#{{channel_name or 'Channel'}}</strong>, um die ersten 5-Minuten-Gang zu begrüßen!
+            </div>
+            <div class="user-feed" id="userFeed">
+                <div style="text-align: center; opacity: 0.6; font-style: italic;">
+                    Keine aktiven Chatter bisher...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Controls (can be hidden for OBS) -->
+    <div class="controls" id="controls">
+        <button onclick="startCollection()">Start Sammlung</button>
+        <button onclick="stopCollection()">Stop Sammlung</button>
+        <button onclick="resetUsers()" style="background: #ff6b6b;">Reset User</button>
+        <button onclick="toggleControls()">Controls ausblenden</button>
+        <div class="status" id="status">Bereit zum Start</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const displayContainer = document.getElementById('displayContainer');
+        const statusElement = document.getElementById('status');
+        let currentTimeout;
+        let lastKnownTime = "--:--"; // Speichere die letzte bekannte Zeit
+        let userFeed = []; // Array für Chat-Nachrichten-Feed
+        
+        // Channel-Name aus URL extrahieren
+        function getChannelName() {
+            const path = window.location.pathname;
+            const pathParts = path.split('/').filter(part => part.length > 0);
+            return pathParts.length > 0 ? pathParts[0] : 'default_channel';
+        }
+        
+        const channelName = getChannelName();
+        console.log('Channel Name:', channelName);
+        
+        // Sound-Funktionen
+        let customAudio = null;
+        let useCustomSound = false;
+        let soundCooldown = false; // Verhindert mehrfache Sounds kurz hintereinander
+        
+        // Lade eigene Audio-Datei (optional)
+        function loadCustomSound(audioPath) {
+            try {
+                customAudio = new Audio(audioPath);
+                customAudio.volume = 0.7; // Lautstärke anpassen (0.0 - 1.0)
+                customAudio.preload = 'auto';
+                useCustomSound = true;
+                console.log('Eigener Sound geladen:', audioPath);
+                return true;
+            } catch (error) {
+                console.log('Fehler beim Laden des eigenen Sounds:', error);
+                useCustomSound = false;
+                return false;
+            }
+        }
+        
+        function createNotificationSound() {
+            // Erstelle einen einfachen Notification-Sound mit Web Audio API (Fallback)
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            function playSound() {
+                // Erstelle Oszillator für den Sound
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Verbinde Oszillator mit Gain und Output
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Sound-Parameter
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Höherer Ton
+                oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+                
+                // Lautstärke-Envelope
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                // Sound abspielen
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+            
+            return playSound;
+        }
+
+        const playDefaultSound = createNotificationSound();
+
+        function playNotificationSound() {
+            // Verhindere mehrfache Sounds kurz hintereinander (Cooldown von 3 Sekunden)
+            if (soundCooldown) {
+                console.log('Sound-Cooldown aktiv, überspringe Sound');
+                return;
+            }
+            
+            soundCooldown = true;
+            setTimeout(() => {
+                soundCooldown = false;
+            }, 3000); // 3 Sekunden Cooldown
+
+            if (useCustomSound && customAudio) {
+                try {
+                    // Eigenen Sound abspielen
+                    customAudio.currentTime = 0; // Von Anfang starten
+                    customAudio.play().catch(e => {
+                        console.log('Fehler beim Abspielen des eigenen Sounds:', e);
+                        // Fallback auf generierten Sound
+                        playDefaultSound();
+                    });
+                } catch (error) {
+                    console.log('Fehler beim Abspielen des eigenen Sounds:', error);
+                    // Fallback auf generierten Sound
+                    playDefaultSound();
+                }
+            } else {
+                // Standard generierter Sound
+                playDefaultSound();
+            }
+        }
+        
+        // Eigenen Sound laden (Beispiele - eine Zeile auskommentieren)
+        loadCustomSound('/static/notification.mp3');  // MP3 Datei
+        // loadCustomSound('/static/notification.wav');  // WAV Datei
+        // loadCustomSound('/static/notification.ogg');  // OGG Datei
+        // loadCustomSound('https://example.com/sound.mp3'); // URL zu Online-Sound
+
+        // Socket Events
+        socket.on('connect', function() {
+            console.log('Mit Server verbunden');
+            updateStatus();
+        });
+
+        socket.on('new_user', function(user) {
+            // Nur Events für den aktuellen Channel verarbeiten
+            if (!user.channel || user.channel === channelName) {
+                console.log('Neuer User:', user);
+                displayUser(user);
+            }
+        });
+
+        socket.on('chat_message', function(chatData) {
+            // Nur Events für den aktuellen Channel verarbeiten
+            if (!chatData.channel || chatData.channel === channelName) {
+                console.log('Neue Chat-Nachricht:', chatData);
+                // Chat-Nachricht zum Feed hinzufügen (OHNE Sound - nur bei Begrüßung)
+                addChatToFeed(chatData);
+            }
+        });
+
+        socket.on('no_users', function(data) {
+            // Nur Events für den aktuellen Channel verarbeiten
+            if (!data.channel || data.channel === channelName) {
+                console.log('Keine User mehr');
+                displayNoUsers(data.message);
+            }
+        });
+
+        socket.on('users_reset', function(data) {
+            // Nur Events für den aktuellen Channel verarbeiten
+            if (!data.channel || data.channel === channelName) {
+                console.log('User Listen wurden zurückgesetzt');
+                // Feed zurücksetzen
+                userFeed = [];
+                lastKnownTime = "--:--";
+                
+                // Display zurücksetzen zum Startzustand
+                displayContainer.innerHTML = `
+                    <div class="no-users">
+                        <div>5-Minuten-Gang läuft noch (<span id="timeRemainingStart">--:--</span>) ⏰</div>
+                        <div style="font-size: 16px; margin-top: 10px; opacity: 0.8;">
+                            User-Listen wurden zurückgesetzt! Starte eine neue Sammlung.
+                        </div>
+                        <div class="user-feed" id="userFeed">
+                            <div style="text-align: center; opacity: 0.6; font-style: italic;">
+                                Keine aktiven Chatter bisher...
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                updateTimeRemainingDisplay("--:--");
+            }
+        });
+
+        function displayUser(user) {
+            // Clear any existing timeout
+            if (currentTimeout) {
+                clearTimeout(currentTimeout);
+            }
+
+            // Sound abspielen für neuen User
+            try {
+                playNotificationSound();
+            } catch (error) {
+                console.log('Sound konnte nicht abgespielt werden:', error);
+            }
+
+            displayContainer.innerHTML = `
+                <div class="user-container animate">
+                    <img src="${user.profile_image}" alt="${user.username}" class="profile-image" 
+                         onerror="this.src='https://static-cdn.jtvnw.net/jtv_user_pictures/default_profile_picture-70x70.png'">
+                    <div class="username">${user.username}</div>
+                    <div class="welcome-text">Willkommen in der 5MinutenGang! 🎉</div>
+                </div>
+            `;
+
+            // Add show class after a small delay for animation
+            setTimeout(() => {
+                const container = displayContainer.querySelector('.user-container');
+                if (container) {
+                    container.classList.add('show');
+                }
+                // Update time immediately after showing user
+                updateTimeRemaining();
+            }, 100);
+        }
+
+        function displayNoUsers(message) {
+            // Prüfe ob bereits no-users Container vorhanden ist
+            const existingContainer = displayContainer.querySelector('.no-users');
+            
+            if (existingContainer) {
+                // Nur die Nachricht aktualisieren, Feed bleibt unverändert
+                const messageElement = existingContainer.children[1];
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+                // Zeit aktualisieren
+                updateTimeRemainingDisplay(lastKnownTime);
+            } else {
+                // Komplett neuen Container erstellen
+                displayContainer.innerHTML = `
+                    <div class="no-users">
+                        <div>5-Minuten-Gang läuft noch (<span id="timeRemainingStart">${lastKnownTime}</span>) ⏰</div>
+                        <div style="font-size: 16px; margin-top: 10px; opacity: 0.8;">${message}</div>
+                        <div class="user-feed" id="userFeed">
+                            ${generateFeedHTML()}
+                        </div>
+                    </div>
+                `;
+                // Update time immediately after showing no users message mit der letzten Zeit
+                updateTimeRemainingDisplay(lastKnownTime);
+            }
+        }
+
+        function addUserToFeed(user) {
+            // User zum Feed hinzufügen (max 15 Einträge)
+            const feedEntry = {
+                type: 'user',
+                username: user.username,
+                profile_image: user.profile_image,
+                timestamp: new Date()
+            };
+            
+            userFeed.unshift(feedEntry);
+            if (userFeed.length > 15) {
+                userFeed.pop(); // Ältesten Eintrag entfernen
+            }
+            
+            // Feed im DOM aktualisieren falls sichtbar
+            updateFeedDisplay();
+        }
+        
+        function addChatToFeed(chatData) {
+            // Chat-Nachricht zum Feed hinzufügen
+            const feedEntry = {
+                type: 'chat',
+                username: chatData.username,
+                message: chatData.message,
+                profile_image: chatData.profile_image || 'https://static-cdn.jtvnw.net/jtv_user_pictures/default_profile_picture-70x70.png',
+                timestamp: new Date(chatData.timestamp || Date.now())
+            };
+            
+            userFeed.unshift(feedEntry);
+            if (userFeed.length > 15) {
+                userFeed.pop(); // Ältesten Eintrag entfernen
+            }
+            
+            // Feed im DOM aktualisieren falls sichtbar
+            updateFeedDisplay();
+        }
+        
+        function generateFeedHTML() {
+            if (userFeed.length === 0) {
+                return '<div style="text-align: center; opacity: 0.6; font-style: italic;">Keine Aktivität bisher...</div>';
+            }
+            
+            return userFeed.map(entry => {
+                if (entry.type === 'chat') {
+                    // Chat-Nachricht mit Text
+                    const shortMessage = entry.message.length > 40 
+                        ? entry.message.substring(0, 40) + '...' 
+                        : entry.message;
+                    
+                    return `
+                        <div class="feed-item">
+                            <img src="${entry.profile_image}" 
+                                 alt="${entry.username}" 
+                                 class="feed-avatar"
+                                 onerror="this.src='https://static-cdn.jtvnw.net/jtv_user_pictures/default_profile_picture-70x70.png'">
+                            <div style="flex: 1;">
+                                <span class="feed-username">${entry.username}:</span>
+                                <div style="font-size: 12px; opacity: 0.8; margin-top: 2px;">"${shortMessage}"</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+        
+        function updateFeedDisplay() {
+            const feedElement = document.getElementById('userFeed');
+            if (feedElement) {
+                const newHTML = generateFeedHTML();
+                
+                // Nur aktualisieren wenn sich der Inhalt geändert hat
+                if (feedElement.innerHTML !== newHTML) {
+                    feedElement.innerHTML = newHTML;
+                    // Scroll to top wenn neuer User hinzugefügt wurde
+                    feedElement.scrollTop = 0;
+                }
+            }
+        }
+
+        function startCollection() {
+            // Feed zurücksetzen bei neuer Sammlung
+            userFeed = [];
+            updateFeedDisplay();
+            
+            fetch(`/${channelName}/start_collection`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Collection started:', data);
+                    updateStatus();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function resetUsers() {
+            fetch(`/${channelName}/reset_users`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Users reset:', data);
+                    updateStatus();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function testChat() {
+            fetch(`/${channelName}/test_chat`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Test Chat triggered:', data);
+                    updateStatus();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function stopCollection() {
+            fetch(`/${channelName}/stop_collection`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Collection stopped:', data);
+                    updateStatus();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function updateStatus() {
+            fetch(`/${channelName}/status`)
+                .then(response => response.json())
+                .then(data => {
+                    const status = `
+                        Channel: ${data.channel || channelName} | 
+                        Sammlung: ${data.is_collecting ? 'Aktiv' : 'Inaktiv'} | 
+                        IRC: ${data.irc_connected ? '✅ Verbunden' : '❌ Getrennt'} | 
+                        Warteschlange: ${data.queue_length} | 
+                        Gesammelt: ${data.collected_chatters} | 
+                        Angezeigt: ${data.displayed_chatters} | 
+                        Verbleibend: ${data.time_remaining}
+                    `;
+                    statusElement.textContent = status;
+                    
+                    // Update time remaining in user display
+                    updateTimeRemaining(data.time_remaining, data.is_collecting);
+                })
+                .catch(error => {
+                    statusElement.textContent = 'Status nicht verfügbar';
+                    console.error('Error updating status:', error);
+                });
+        }
+
+        function updateTimeRemaining(timeRemaining, isCollecting) {
+            // Funktion um Stunden zu entfernen und nur MM:SS zu zeigen
+            function formatTime(timeString) {
+                if (!timeString || timeString === "Not started" || timeString === "Finished") {
+                    return timeString;
+                }
+                
+                // Entferne Stunden wenn vorhanden (Format: H:MM:SS -> MM:SS)
+                const parts = timeString.split(':');
+                if (parts.length === 3) {
+                    // H:MM:SS -> MM:SS
+                    return parts[1] + ':' + parts[2];
+                } else if (parts.length === 2) {
+                    // MM:SS bleibt MM:SS
+                    return timeString;
+                }
+                return timeString;
+            }
+            
+            let displayTime = "--:--";
+            let color = '#ffffff'; // Standard: Weiß
+            
+            if (isCollecting && timeRemaining && timeRemaining !== "Not started" && timeRemaining !== "Finished") {
+                displayTime = formatTime(timeRemaining);
+                color = '#00ff00'; // Grün wenn aktiv
+                lastKnownTime = displayTime; // Speichere die letzte gültige Zeit
+            } else if (timeRemaining === "Finished") {
+                displayTime = "Fertig!";
+                color = '#ff6b6b'; // Rot wenn fertig
+                lastKnownTime = displayTime;
+            } else {
+                displayTime = "--:--";
+                color = '#ffffff'; // Weiß wenn nicht gestartet
+            }
+            
+            // Update time in start screen
+            updateTimeRemainingDisplay(displayTime, color);
+        }
+        
+        function updateTimeRemainingDisplay(displayTime, color = '#00ff00') {
+            const timeElementStart = document.getElementById('timeRemainingStart');
+            if (timeElementStart) {
+                timeElementStart.textContent = displayTime;
+                timeElementStart.style.color = color;
+            }
+            
+            // Update time in user display (falls vorhanden)
+            const timeElement = document.getElementById('timeRemaining');
+            if (timeElement) {
+                timeElement.textContent = displayTime;
+                timeElement.style.color = color;
+            }
+        }
+
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Update status every 2 seconds for more accurate time display
+        setInterval(updateStatus, 1000);
+
+        // Initial status update
+        updateStatus();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault();
+                startCollection();
+            } else if (e.key === 'x' && e.ctrlKey) {
+                e.preventDefault();
+                stopCollection();
+            } else if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                resetUsers();
+            } else if (e.key === 'h' && e.ctrlKey) {
+                e.preventDefault();
+                toggleControls();
+            }
+        });
+    </script>
+</body>
+</html>
